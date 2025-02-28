@@ -1,4 +1,4 @@
-# Team Fortress 2 Pay To Earn
+# Team Fortress 2 Play To Earn
 Base template for running a server with play to earn support
 
 ## Functionality
@@ -14,8 +14,33 @@ To configure you will need to manually change some values inside the file before
 
 ``Database Version``
 ```cpp
-char        winnerValue[20] = "1000000000000000000";    // Value that players will earn when round end (winners) 1 PTE
-char        loserValue[20]  = "500000000000000000";     // Value that players will earn when round end (losers) 0.5 PTE
+int         timestampIncomes[15]         = { 60, 120, 180, 240, 300, 360, 420, 480, 540, 600, 660, 720, 780, 840, 900 };    // Stores the timestamps to earn PTE's
+const int   timestampIncomesSize         = 15;                                                                              // Must be the same as timeStampIncomes
+
+char        timestampValue[15][20]       = { "10000000000000000", "20000000000000000", "30000000000000000",
+                                "40000000000000000", "50000000000000000", "60000000000000000",
+                                "70000000000000000", "80000000000000000", "90000000000000000",
+                                "100000000000000000", "110000000000000000", "120000000000000000",
+                                "130000000000000000", "140000000000000000", "150000000000000000" };    // The values to player receive based on timestampIncomes
+char        timestampValueToShow[15][10] = { "0.1", "0.2", "0.3",
+                                      "0.4", "0.5", "0.6",
+                                      "0.7", "0.8", "0.9",
+                                      "1.0", "1.1", "1.2",
+                                      "1.3", "1.4", "1.5" };    // The values to player receive based on timestampIncomes
+char        winnerValue[20]              = "1000000000000000000";      // 1 PTE
+char        loserValue[20]               = "500000000000000000";       // 0.5 PTE
+bool        alertPlayerIncomings         = true;                       // Alert or not in the player chat if he received any incoming
+const int   minimumTimePlayedForIncoming = 120;
+const int   minimumPlayerForSoloMVP      = 16;
+const int   minimumPlayerForTwoMVP       = 8;
+const int   minimumPlayerForThreeMVP     = 4;
+char        soloMVPValue[20]             = "1000000000000000000";    // 1 PTE
+char        twoMVPValue[20]              = "500000000000000000";     // 0.5 PTE
+char        threeMVPValue[20]            = "300000000000000000";     // 0.3 PTE
+char        soloMVPValueShow[10]         = "1.0";
+char        twoMVPValueShow[10]          = "0.5";
+char        threeMVPValueShow[10]        = "0.3";
+const int   minimumScoreToReceiveMVP     = 5;
 ```
 
 ``JSON Version``
