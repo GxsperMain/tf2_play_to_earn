@@ -67,7 +67,7 @@ public void OnPluginStart()
     wallets       = json_decode(walletsString);
 
     // Match Finish Event
-    HookEvent("teamplay_win_panel", Event_RoundEnd, EventHookMode_PostNoCopy);
+    HookEvent("teamplay_win_panel", OnRoundEnd, EventHookMode_PostNoCopy);
 
     // Player connected
     HookEvent("player_connect", OnPlayerConnect, EventHookMode_Post);
@@ -82,7 +82,7 @@ public void OnPluginStart()
     CreateTimer(60.0, OnMinutePassed, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 }
 
-public Action Event_RoundEnd(Event event, const char[] name, bool dontBroadcast)
+public Action OnRoundEnd(Event event, const char[] name, bool dontBroadcast)
 {
     // 3 == blue
     // 2 == red
@@ -257,7 +257,6 @@ public Action OnMinutePassed(Handle timer)    // Resync wallets
 
         playerWallets = json_decode(playerWalletsString);
     }
-
 
     // Wallets resync...
     if (FileExists("wallets/wallets.lock"))

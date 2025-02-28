@@ -3,9 +3,14 @@ Base template for running a server with play to earn support
 
 ## Functionality
 - When the round ends the winning side will earn 1 PTE, the losing side will earn 0.5 PTE
+- When the round ends player will earn PTE based on time play, maximum 1.5 at 15 minutes
+- Players will only receive if at least played during 1 minute of playtime
+- MVP players will receive 1 PTE coins
+- SVP players will receive 0.5 PTE coins
+- TVP players will receive 0.3 PTE coins
 
 ## Configuring
-To configure you will need to manually change some values inside the file
+To configure you will need to manually change some values inside the file before compiling
 
 ``Database Version``
 ```cpp
@@ -27,10 +32,10 @@ float       loserValue  = 0.5; // Value that players will earn when round end (l
 - Create a user for the database: GRANT ALL PRIVILEGES ON pte_wallets.* TO 'pte_admin'@'localhost' IDENTIFIED BY 'supersecretpassword' WITH GRANT OPTION; FLUSH PRIVILEGES;
 - Create a table named ``tf2``:
 ```sql
-CREATE TABLE tf2 (  
-    uniqueid VARCHAR(255) NOT NULL PRIMARY KEY,  
-    walletaddress VARCHAR(255) NOT NULL,  
-    value DECIMAL(50, 0) NOT NULL DEFAULT 0  
+CREATE TABLE tf2 (
+    uniqueid VARCHAR(255) NOT NULL PRIMARY KEY,
+    walletaddress VARCHAR(255) NOT NULL,
+    value DECIMAL(50, 0) NOT NULL DEFAULT 0
 );
 ```
 - Copy the play_to_earn_db.sp inside TeamFortress2/tf/addons/sourcemod/scripting
@@ -39,7 +44,7 @@ CREATE TABLE tf2 (
 - Now you need to configure your database, go to TeamFortress2/tf/addons/sourcemod/databases.cfg, and add the database credentials
 - Run the server normally, players should register their wallets using the steam ``steamID3:``, like: ``[U:1:0000000000]`` in the tf2 database
 
-# Using JSON (not recommended) and no supported
+## Using JSON (not recommended)
 - Download Team Fortress 2 server files
 - Install [sourcemod](https://www.sourcemod.net/downloads.php) and [metamod](https://www.sourcemm.net/downloads.php/?branch=stable)
 - Install [sm_json](https://github.com/clugg/sm-json) for [sourcemod](https://www.sourcemod.net/downloads.php), just place the addons folder inside TeamFortress2/tf
@@ -52,3 +57,6 @@ CREATE TABLE tf2 (
     "[U:1:0000000000]": "0x123..."
 }
 ```
+
+## Recommendations
+- [block_team_switch.sp]() this plugin will block player from changing team, so you can prevent them for becoming afk in the team selector and select a team when the match is finishing.
