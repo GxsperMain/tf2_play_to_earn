@@ -8,6 +8,7 @@ Base template for running a server with play to earn support
 - MVP players will receive 1 PTE coins
 - SVP players will receive 0.5 PTE coins
 - TVP players will receive 0.3 PTE coins
+- Setup wallet as command ``!wallet 0x123...``
 
 ## Configuring
 To configure you will need to manually change some values inside the file before compiling

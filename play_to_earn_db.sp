@@ -1,5 +1,7 @@
 #include <sourcemod>
 #include <json>
+#include <tf2_stocks.inc>
+#include <regex.inc>
 
 public Plugin myinfo =
 {
@@ -27,16 +29,16 @@ char        timestampValueToShow[15][10] = { "0.1", "0.2", "0.3",
                                       "0.7", "0.8", "0.9",
                                       "1.0", "1.1", "1.2",
                                       "1.3", "1.4", "1.5" };    // The values to player receive based on timestampIncomes
-char        winnerValue[20]              = "1000000000000000000";      // 1 PTE
-char        loserValue[20]               = "500000000000000000";       // 0.5 PTE
+char        winnerValue[20]              = "100000000000000000";      // 1 PTE
+char        loserValue[20]               = "50000000000000000";       // 0.5 PTE
 bool        alertPlayerIncomings         = true;                       // Alert or not in the player chat if he received any incoming
 const int   minimumTimePlayedForIncoming = 120;
 const int   minimumPlayerForSoloMVP      = 16;
 const int   minimumPlayerForTwoMVP       = 8;
 const int   minimumPlayerForThreeMVP     = 4;
-char        soloMVPValue[20]             = "1000000000000000000";    // 1 PTE
-char        twoMVPValue[20]              = "500000000000000000";     // 0.5 PTE
-char        threeMVPValue[20]            = "300000000000000000";     // 0.3 PTE
+char        soloMVPValue[20]             = "100000000000000000";    // 1 PTE
+char        twoMVPValue[20]              = "50000000000000000";     // 0.5 PTE
+char        threeMVPValue[20]            = "30000000000000000";     // 0.3 PTE
 char        soloMVPValueShow[10]         = "1.0";
 char        twoMVPValueShow[10]          = "0.5";
 char        threeMVPValueShow[10]        = "0.3";
@@ -68,13 +70,13 @@ public void OnPluginStart()
     HookEventEx("player_disconnect", OnPlayerDisconnect, EventHookMode_Post);
 
     // Wallet command
-    RegConsoleCmd("wallet", Command_Test, "Set up your Wallet address");
+    RegConsoleCmd("wallet", CommandRegisterWallet, "Set up your Wallet address");
 
     // Player team changed
     HookEventEx("player_team", OnPlayerChangeTeam, EventHookMode_Post);
 
-    // Player score changed
-    HookEventEx("player_score_changed", OnPlayerScored, EventHookMode_Post);
+    // Round started
+    HookEventEx("teamplay_round_start", OnRoundStart, EventHookMode_Post);
 }
 
 //
@@ -106,6 +108,9 @@ public void OnRoundEnd(Event event, const char[] name, bool dontBroadcast)
 
         int         index      = GetClientOfUserId(playerObj.GetInt("userId"));
         int         clientTeam = GetClientTeam(index);
+
+        playerObj.SetInt("score", TF2_GetPlayerResourceData(index, TFResource_TotalScore));
+
         if (clientTeam != 2 && clientTeam != 3)
         {
             PrintToServer("Wrong Team");
@@ -121,7 +126,7 @@ public void OnRoundEnd(Event event, const char[] name, bool dontBroadcast)
         char timestampCurrentEarning[20] = "0";
         for (int j = 0; j < timestampIncomesSize; j++)
         {
-            if (timePlayed >= timestampIncomes[i])
+            if (timePlayed >= timestampIncomes[j])
             {
                 timestampIndex = j;
             }
@@ -397,8 +402,8 @@ public void OnPlayerConnect(Event event, const char[] name, bool dontBroadcast)
         IntToString(userId, userIdStr, sizeof(userIdStr));
         onlinePlayers.SetObject(userIdStr, playerObj);
 
-        PrintToServer("[PTE] Player Connected: Name: %s | ID: %d | SteamID: %s | IP: %s | Bot: %d",
-                      playerName, userId, networkId, address, isBot);
+        PrintToServer("[PTE] Player Connected: Name: %s | ID: %d | Index: %d | SteamID: %s | IP: %s | Bot: %d",
+                      playerName, userId, index, networkId, address, isBot);
     }
 }
 
@@ -478,45 +483,11 @@ public void OnMapEnd()
     ClearTemporaryData();
 }
 
-public void OnMapStart()
+public void OnRoundStart(Event event, const char[] name, bool dontBroadcast)
 {
-    PrintToServer("[PTE] Map started, reseting currentTimestamp");
-
-    currentTimestamp = 0;
-
-    int length       = onlinePlayers.Length;
-    int key_length   = 0;
-    for (int i = 0; i < length; i += 1)
-    {
-        key_length = onlinePlayers.GetKeySize(i);
-        char[] key = new char[key_length];
-        onlinePlayers.GetKey(i, key, key_length);
-
-        JSON_Object playerObj = onlinePlayers.GetObject(key);
-        playerObj.SetInt("teamTimestamp", currentTimestamp);
-
-        onlinePlayers.SetObject(key, playerObj);
-    }
+    PrintToServer("[PTE] Round started");
+    ClearTemporaryData();
 }
-
-public void OnPlayerScored(Event event, const char[] name, bool dontBroadcast)
-{
-    int  playerIndex = event.GetInt("player");
-    char playerIndexStr[32];
-    IntToString(playerIndex, playerIndexStr, sizeof(playerIndexStr));
-    int score = event.GetInt("delta");
-
-    if (JsonContains(onlinePlayers, playerIndexStr))
-    {
-        JSON_Object playerObj  = onlinePlayers.GetObject(playerIndexStr);
-        int         totalScore = playerObj.GetInt("score", 0);
-        totalScore += score;
-
-        playerObj.SetInt("score", totalScore);
-        PrintToServer("[PTE] Player: %d, have now: %d score", playerIndex, totalScore);
-    }
-}
-
 //
 //
 //
@@ -524,9 +495,89 @@ public void OnPlayerScored(Event event, const char[] name, bool dontBroadcast)
 //
 // Commands
 //
-public Action Command_Test(int client, int args)
+public Action CommandRegisterWallet(int client, int args)
 {
-    PrintToChat(client, "You can set your wallet in your discord: discord.com/...");
+    if (args < 1)
+    {
+        PrintToChat(client, "You can set your wallet in your discord: discord.gg/3SYP9TRVuX");
+        PrintToChat(client, "Or you can setup using !wallet 0x123...");
+        return Plugin_Handled;
+    }
+    char walletAddress[256];
+    GetCmdArgString(walletAddress, sizeof(walletAddress));
+
+    if (ValidAddress(walletAddress))
+    {
+        char indexStr[32];
+        IntToString(GetClientUserId(client), indexStr, sizeof(indexStr));
+
+        PrintToServer("RAULES %s", indexStr);
+
+        JSON_Object playerObj = onlinePlayers.GetObject(indexStr);
+
+        char        playerNetwork[32];
+        playerObj.GetString("networkId", playerNetwork, sizeof(playerNetwork));
+
+        // Updating player in database
+        char query[512];
+        Format(query, sizeof(query),
+               "UPDATE tf2 SET walletaddress = '%s' WHERE uniqueid = '%s';",
+               walletAddress, playerNetwork);
+
+        // Running the update method
+        if (!SQL_Query(walletsDB, query))
+        {
+            char error[255];
+            SQL_GetError(walletsDB, error, sizeof(error));
+            PrintToServer("[PTE] Cannot update %s wallet", playerNetwork);
+            PrintToServer(error);
+            PrintToChat(client, "Any error occurs when setting up your wallet, contact the server owner");
+        }
+        else
+        {
+            int affectedRows = SQL_GetAffectedRows(walletsDB);
+            if (affectedRows == 0)
+            {
+                // Updating player in database
+                char query2[512];
+                Format(query2, sizeof(query2),
+                       "INSERT INTO tf2 (uniqueid, walletaddress) VALUES ('%s', '%s');",
+                       playerNetwork, walletAddress);
+
+                // Running the update method
+                if (!SQL_Query(walletsDB, query2))
+                {
+                    char error[255];
+                    SQL_GetError(walletsDB, error, sizeof(error));
+                    PrintToServer("[PTE] Cannot update %s wallet", playerNetwork);
+                    PrintToServer(error);
+                    PrintToChat(client, "Any error occurs when setting up your wallet, contact the server owner");
+                }
+                else
+                {
+                    int affectedRows2 = SQL_GetAffectedRows(walletsDB);
+                    if (affectedRows2 == 0)
+                    {
+                        PrintToChat(client, "Any error occurs when setting up your wallet, contact the server owner");
+                        PrintToServer("[PTE] No rows updated for %s wallet. The uniqueid might not exist.", playerNetwork);
+                    }
+                    else
+                    {
+                        PrintToChat(client, "Wallet set! you may now receive PTE while playing, have fun");
+                        PrintToServer("[PTE] Updated %s wallet to: %s", playerNetwork, walletAddress);
+                    }
+                }
+            }
+            else
+            {
+                PrintToChat(client, "Wallet updated!");
+                PrintToServer("[PTE] Updated %s wallet to: %s", playerNetwork, walletAddress);
+            }
+        }
+    }
+    else {
+        PrintToChat(client, "The wallet address provided is invalid, if you need help you can ask in your discord: discord.gg/3SYP9TRVuX");
+    }
 
     return Plugin_Handled;
 }
@@ -615,9 +666,6 @@ void IncrementWallet(
     }
 }
 
-//
-// Utils
-//
 bool JsonContains(JSON_Object obj, const char[] keyToCheck)
 {
     int length     = obj.Length;
@@ -654,6 +702,22 @@ void ClearTemporaryData()
 
         onlinePlayers.SetObject(key, playerObj);
     }
+}
+
+bool ValidAddress(const char[] address)
+{
+    char       error[128];
+    RegexError errcode;
+    Regex      regex = CompileRegex("^[a-zA-Z0-9]{42}$");
+
+    if (errcode != REGEX_ERROR_NONE)
+    {
+        PrintToServer("[PTE] Wrong regex typed: %s", error);
+        return false;
+    }
+
+    int result = regex.Match(address);
+    return result > 0;
 }
 //
 //
