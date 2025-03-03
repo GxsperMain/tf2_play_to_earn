@@ -19,18 +19,18 @@ int         currentTimestamp             = 0;                                   
 int         timestampIncomes[15]         = { 60, 120, 180, 240, 300, 360, 420, 480, 540, 600, 660, 720, 780, 840, 900 };    // Stores the timestamps to earn PTE's
 const int   timestampIncomesSize         = 15;                                                                              // Must be the same as timeStampIncomes
 
-char        timestampValue[15][20]       = { "10000000000000000", "20000000000000000", "30000000000000000",
-                                "40000000000000000", "50000000000000000", "60000000000000000",
-                                "70000000000000000", "80000000000000000", "90000000000000000",
-                                "100000000000000000", "110000000000000000", "120000000000000000",
-                                "130000000000000000", "140000000000000000", "150000000000000000" };    // The values to player receive based on timestampIncomes
+char        timestampValue[15][20]       = { "100000000000000000", "200000000000000000", "300000000000000000",
+                                "400000000000000000", "500000000000000000", "600000000000000000",
+                                "700000000000000000", "800000000000000000", "900000000000000000",
+                                "1000000000000000000", "1100000000000000000", "1200000000000000000",
+                                "1300000000000000000", "1400000000000000000", "1500000000000000000" };    // The values to player receive based on timestampIncomes
 char        timestampValueToShow[15][10] = { "0.1", "0.2", "0.3",
                                       "0.4", "0.5", "0.6",
                                       "0.7", "0.8", "0.9",
                                       "1.0", "1.1", "1.2",
                                       "1.3", "1.4", "1.5" };    // The values to player receive based on timestampIncomes
-char        winnerValue[20]              = "100000000000000000";      // 1 PTE
-char        loserValue[20]               = "50000000000000000";       // 0.5 PTE
+char        winnerValue[20]              = "500000000000000000";      // 0.5 PTE
+char        loserValue[20]               = "300000000000000000";       // 0.3 PTE
 bool        alertPlayerIncomings         = true;                       // Alert or not in the player chat if he received any incoming
 const int   minimumTimePlayedForIncoming = 120;
 const int   minimumPlayerForSoloMVP      = 16;
@@ -155,10 +155,10 @@ public void OnRoundEnd(Event event, const char[] name, bool dontBroadcast)
 
         if (winningTeam == clientTeam)
         {
-            IncrementWallet(playerNetwork, winnerValue, index, "1 PTE", ", for Winning");
+            IncrementWallet(playerNetwork, winnerValue, index, "0.5 PTE", ", for Winning");
         }
         else {
-            IncrementWallet(playerNetwork, loserValue, index, "0.5 PTE", ", for Losing");
+            IncrementWallet(playerNetwork, loserValue, index, "0.3 PTE", ", for Losing");
         }
 
         if (!StrEqual(timestampCurrentEarning, "0"))
