@@ -29,7 +29,7 @@ char        timestampValueToShow[15][10] = { "0.1", "0.2", "0.3",
                                       "0.7", "0.8", "0.9",
                                       "1.0", "1.1", "1.2",
                                       "1.3", "1.4", "1.5" };    // The values to player receive based on timestampIncomes
-char        winnerValue[20]              = "500000000000000000";      // 0.5 PTE
+char        winnerValue[20]              = "500000000000000000";       // 0.5 PTE
 char        loserValue[20]               = "300000000000000000";       // 0.3 PTE
 bool        alertPlayerIncomings         = true;                       // Alert or not in the player chat if he received any incoming
 const int   minimumTimePlayedForIncoming = 120;
@@ -77,6 +77,9 @@ public void OnPluginStart()
 
     // Round started
     HookEventEx("teamplay_round_start", OnRoundStart, EventHookMode_Post);
+
+    // Player Warning
+    CreateTimer(300.0, WarnPlayersWithoutWallet, _, TIMER_REPEAT);
 }
 
 //
@@ -400,7 +403,46 @@ public void OnPlayerConnect(Event event, const char[] name, bool dontBroadcast)
 
         char userIdStr[8];
         IntToString(userId, userIdStr, sizeof(userIdStr));
+
         onlinePlayers.SetObject(userIdStr, playerObj);
+
+        char checkQuery[512];
+        Format(checkQuery, sizeof(checkQuery),
+               "SELECT COUNT(*) FROM tf2 WHERE uniqueid = '%s';",
+               networkId);
+
+        // Checking the player uniqueid existance
+        DBResultSet hQuery = SQL_Query(walletsDB, checkQuery);
+        if (hQuery == null)
+        {
+            char error[255];
+            SQL_GetError(walletsDB, error, sizeof(error));
+            PrintToServer("[PTE] Error checking if %s exists: %s", networkId, error);
+            return;
+        }
+        else {
+            while (SQL_FetchRow(hQuery))
+            {
+                int rows = SQL_FetchInt(hQuery, 0);
+                if (rows == 0)
+                {
+                    onlinePlayers.SetBool("walletSet", false);
+                    onlinePlayers.SetObject(userIdStr, playerObj);
+                    PrintToServer("[PTE] %s does not have a wallet...", playerName);
+                    return
+                }
+                else if (rows > 1) {
+                    onlinePlayers.SetBool("walletSet", false);
+                    PrintToServer("[PTE] ERROR: Address \"%s\" is on multiples rows, you setup the database wrongly, please check it. rows: %d", networkId, rows);
+                    return;
+                }
+                else {
+                    onlinePlayers.SetBool("walletSet", true);
+                    PrintToServer("[PTE] %s have a wallet", playerName);
+                    break;
+                }
+            }
+        }
 
         PrintToServer("[PTE] Player Connected: Name: %s | ID: %d | Index: %d | SteamID: %s | IP: %s | Bot: %d",
                       playerName, userId, index, networkId, address, isBot);
@@ -511,8 +553,6 @@ public Action CommandRegisterWallet(int client, int args)
         char indexStr[32];
         IntToString(GetClientUserId(client), indexStr, sizeof(indexStr));
 
-        PrintToServer("RAULES %s", indexStr);
-
         JSON_Object playerObj = onlinePlayers.GetObject(indexStr);
 
         char        playerNetwork[32];
@@ -565,6 +605,8 @@ public Action CommandRegisterWallet(int client, int args)
                     {
                         PrintToChat(client, "Wallet set! you may now receive PTE while playing, have fun");
                         PrintToServer("[PTE] Updated %s wallet to: %s", playerNetwork, walletAddress);
+                        playerObj.SetBool("walletSet", true);
+                        onlinePlayers.SetObject(indexStr, playerObj);
                     }
                 }
             }
@@ -595,6 +637,26 @@ public Action TimestampUpdate(Handle timer)
     return Plugin_Continue;
 }
 
+public Action WarnPlayersWithoutWallet(Handle timer)
+{
+    int length     = onlinePlayers.Length;
+    int key_length = 0;
+    for (int i = 0; i < length; i += 1)
+    {
+        key_length = onlinePlayers.GetKeySize(i);
+        char[] key = new char[key_length];
+        onlinePlayers.GetKey(i, key, key_length);
+
+        JSON_Object playerObj = onlinePlayers.GetObject(key);
+        if (!playerObj.GetBool("walletSet"))
+        {
+            int index = GetClientOfUserId(playerObj.GetInt("userId"));
+            PrintToChat(index, "[PTE] You do not have a wallet set yet, find out more on our discord: discord.gg/3SYP9TRVuX");
+        }
+    }
+    return Plugin_Continue;
+}
+
 void IncrementWallet(
     char[] playerNetwork,
     char[] valueToIncrement,
@@ -609,7 +671,6 @@ void IncrementWallet(
     }
 
     // Checking player existance in database
-    // Formatar a query SQL para verificar se o uniqueid já existe
     char checkQuery[512];
     Format(checkQuery, sizeof(checkQuery),
            "SELECT COUNT(*) FROM tf2 WHERE uniqueid = '%s';",
@@ -697,6 +758,7 @@ void ClearTemporaryData()
         onlinePlayers.GetKey(i, key, key_length);
 
         JSON_Object playerObj = onlinePlayers.GetObject(key);
+        if (playerObj == null) continue;
         playerObj.SetInt("teamTimestamp", currentTimestamp);
         playerObj.SetInt("score", 0);
 

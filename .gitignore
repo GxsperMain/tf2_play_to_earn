@@ -1,3 +1,4 @@
 tf
 .vscode
 update-server.sh
+build.sh

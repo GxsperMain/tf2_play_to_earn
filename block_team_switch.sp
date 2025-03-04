@@ -16,5 +16,12 @@ public Plugin:myinfo =
 	url = "https://github.com/GxsperMain/tf2_play_to_earn"
 }
 
-public OnPluginStart() AddCommandListener(Command_JoinTeam, "jointeam");
-public Action:Command_JoinTeam(client, const String:command[], args) return Plugin_Handled;
+public OnPluginStart()
+{
+    AddCommandListener(Command_JoinTeam, "jointeam");
+}
+
+public Action:Command_JoinTeam(client, const String:command[], args)
+{
+    return Plugin_Handled;
+}

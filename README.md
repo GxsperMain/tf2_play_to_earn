@@ -2,7 +2,7 @@
 Base template for running a server with play to earn support
 
 ## Functionality
-- When the round ends the winning side will earn 1 PTE, the losing side will earn 0.5 PTE
+- When the round ends the winning side will earn 0.5 PTE, the losing side will earn 0.3 PTE
 - When the round ends player will earn PTE based on time play, maximum 1.5 at 15 minutes
 - Players will only receive if at least played during 1 minute of playtime
 - MVP players will receive 1 PTE coins
@@ -18,26 +18,26 @@ To configure you will need to manually change some values inside the file before
 int         timestampIncomes[15]         = { 60, 120, 180, 240, 300, 360, 420, 480, 540, 600, 660, 720, 780, 840, 900 };    // Stores the timestamps to earn PTE's
 const int   timestampIncomesSize         = 15;                                                                              // Must be the same as timeStampIncomes
 
-char        timestampValue[15][20]       = { "10000000000000000", "20000000000000000", "30000000000000000",
-                                "40000000000000000", "50000000000000000", "60000000000000000",
-                                "70000000000000000", "80000000000000000", "90000000000000000",
-                                "100000000000000000", "110000000000000000", "120000000000000000",
-                                "130000000000000000", "140000000000000000", "150000000000000000" };    // The values to player receive based on timestampIncomes
+char        timestampValue[15][20]       = { "100000000000000000", "200000000000000000", "300000000000000000",
+                                "400000000000000000", "500000000000000000", "600000000000000000",
+                                "700000000000000000", "800000000000000000", "900000000000000000",
+                                "1000000000000000000", "1100000000000000000", "1200000000000000000",
+                                "1300000000000000000", "1400000000000000000", "1500000000000000000" };    // The values to player receive based on timestampIncomes
 char        timestampValueToShow[15][10] = { "0.1", "0.2", "0.3",
                                       "0.4", "0.5", "0.6",
                                       "0.7", "0.8", "0.9",
                                       "1.0", "1.1", "1.2",
                                       "1.3", "1.4", "1.5" };    // The values to player receive based on timestampIncomes
-char        winnerValue[20]              = "1000000000000000000";      // 1 PTE
-char        loserValue[20]               = "500000000000000000";       // 0.5 PTE
+char        winnerValue[20]              = "500000000000000000";       // 0.5 PTE
+char        loserValue[20]               = "300000000000000000";       // 0.3 PTE
 bool        alertPlayerIncomings         = true;                       // Alert or not in the player chat if he received any incoming
 const int   minimumTimePlayedForIncoming = 120;
 const int   minimumPlayerForSoloMVP      = 16;
 const int   minimumPlayerForTwoMVP       = 8;
 const int   minimumPlayerForThreeMVP     = 4;
-char        soloMVPValue[20]             = "1000000000000000000";    // 1 PTE
-char        twoMVPValue[20]              = "500000000000000000";     // 0.5 PTE
-char        threeMVPValue[20]            = "300000000000000000";     // 0.3 PTE
+char        soloMVPValue[20]             = "100000000000000000";    // 1 PTE
+char        twoMVPValue[20]              = "50000000000000000";     // 0.5 PTE
+char        threeMVPValue[20]            = "30000000000000000";     // 0.3 PTE
 char        soloMVPValueShow[10]         = "1.0";
 char        twoMVPValueShow[10]          = "0.5";
 char        threeMVPValueShow[10]        = "0.3";
