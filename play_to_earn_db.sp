@@ -14,38 +14,42 @@ public Plugin myinfo =
 
 Database    walletsDB;
 
-JSON_Object onlinePlayers;                                                                                                  // Stores online players datas `https://wiki.alliedmods.net/Generic_Source_Server_Events#player_connect`
-int         currentTimestamp             = 0;                                                                               // Stores a simple timestamp that goes upper every second
-int         timestampIncomes[15]         = { 60, 120, 180, 240, 300, 360, 420, 480, 540, 600, 660, 720, 780, 840, 900 };    // Stores the timestamps to earn PTE's
-const int   timestampIncomesSize         = 15;                                                                              // Must be the same as timeStampIncomes
+JSON_Object onlinePlayers;                                                                                                     // Stores online players datas `https://wiki.alliedmods.net/Generic_Source_Server_Events#player_connect`
+int         currentTimestamp                = 0;                                                                               // Stores a simple timestamp that goes upper every second
+int         timestampIncomes[15]            = { 60, 120, 180, 240, 300, 360, 420, 480, 540, 600, 660, 720, 780, 840, 900 };    // Stores the timestamps to earn PTE's
+const int   timestampIncomesSize            = 15;                                                                              // Must be the same as timeStampIncomes
 
-char        timestampValue[15][20]       = { "100000000000000000", "200000000000000000", "300000000000000000",
+char        timestampValue[15][20]          = { "100000000000000000", "200000000000000000", "300000000000000000",
                                 "400000000000000000", "500000000000000000", "600000000000000000",
                                 "700000000000000000", "800000000000000000", "900000000000000000",
                                 "1000000000000000000", "1100000000000000000", "1200000000000000000",
                                 "1300000000000000000", "1400000000000000000", "1500000000000000000" };    // The values to player receive based on timestampIncomes
-char        timestampValueToShow[15][10] = { "0.1", "0.2", "0.3",
+char        timestampValueToShow[15][10]    = { "0.1", "0.2", "0.3",
                                       "0.4", "0.5", "0.6",
                                       "0.7", "0.8", "0.9",
                                       "1.0", "1.1", "1.2",
                                       "1.3", "1.4", "1.5" };    // The values to player receive based on timestampIncomes
-char        winnerValue[20]              = "500000000000000000";       // 0.5 PTE
-char        loserValue[20]               = "300000000000000000";       // 0.3 PTE
-bool        alertPlayerIncomings         = true;                       // Alert or not in the player chat if he received any incoming
-const int   minimumTimePlayedForIncoming = 120;
-const int   minimumPlayerForSoloMVP      = 16;
-const int   minimumPlayerForTwoMVP       = 8;
-const int   minimumPlayerForThreeMVP     = 4;
-char        soloMVPValue[20]             = "100000000000000000";    // 1 PTE
-char        twoMVPValue[20]              = "50000000000000000";     // 0.5 PTE
-char        threeMVPValue[20]            = "30000000000000000";     // 0.3 PTE
-char        soloMVPValueShow[10]         = "1.0";
-char        twoMVPValueShow[10]          = "0.5";
-char        threeMVPValueShow[10]        = "0.3";
-const int   minimumScoreToReceiveMVP     = 5;
+char        winnerValue[20]                 = "500000000000000000";       // 0.5 PTE
+char        loserValue[20]                  = "300000000000000000";       // 0.3 PTE
+char        winnerToShow[10]                = "0.5";
+char        loserToShow[10]                 = "0.3";
+bool        alertPlayerIncomings            = true;    // Alert or not in the player chat if he received any incoming
+bool        alertNonWalletRegisteredPlayers = true;    // Alert players who doesn't have a wallet setup
+const int   minimumTimePlayedForIncoming    = 120;
+const int   minimumPlayerForSoloMVP         = 16;
+const int   minimumPlayerForTwoMVP          = 8;
+const int   minimumPlayerForThreeMVP        = 4;
+char        soloMVPValue[20]                = "100000000000000000";    // 1 PTE
+char        twoMVPValue[20]                 = "50000000000000000";     // 0.5 PTE
+char        threeMVPValue[20]               = "30000000000000000";     // 0.3 PTE
+char        soloMVPValueShow[10]            = "1.0";
+char        twoMVPValueShow[10]             = "0.5";
+char        threeMVPValueShow[10]           = "0.3";
+const int   minimumScoreToReceiveMVP        = 5;
 
 public void OnPluginStart()
 {
+    PrintToServer("PLAY TO EARN: 1.4");
     PrintToServer("[PTE] Play to Earn plugin has been initialized");
     CreateTimer(1.0, TimestampUpdate, _, TIMER_REPEAT);
 
@@ -78,8 +82,11 @@ public void OnPluginStart()
     // Round started
     HookEventEx("teamplay_round_start", OnRoundStart, EventHookMode_Post);
 
-    // Player Warning
-    CreateTimer(300.0, WarnPlayersWithoutWallet, _, TIMER_REPEAT);
+    if (alertNonWalletRegisteredPlayers)
+    {
+        // Player Warning
+        CreateTimer(300.0, WarnPlayersWithoutWallet, _, TIMER_REPEAT);
+    }
 }
 
 //
@@ -107,10 +114,15 @@ public void OnRoundEnd(Event event, const char[] name, bool dontBroadcast)
         char[] key = new char[key_length];
         onlinePlayers.GetKey(i, key, key_length);
 
-        JSON_Object playerObj  = onlinePlayers.GetObject(key);
+        JSON_Object playerObj = onlinePlayers.GetObject(key);
+        if (playerObj == INVALID_HANDLE)
+        {
+            PrintToServer("[PTE] [OnRoundEnd] ERROR: %s have any invalid player object", key);
+            continue;
+        }
 
-        int         index      = GetClientOfUserId(playerObj.GetInt("userId"));
-        int         clientTeam = GetClientTeam(index);
+        int index      = GetClientOfUserId(playerObj.GetInt("userId"));
+        int clientTeam = GetClientTeam(index);
 
         playerObj.SetInt("score", TF2_GetPlayerResourceData(index, TFResource_TotalScore));
 
@@ -121,7 +133,7 @@ public void OnRoundEnd(Event event, const char[] name, bool dontBroadcast)
             continue;
         }
         char playerNetwork[32];
-        playerObj.GetString("networkId", playerNetwork, 32);
+        playerObj.GetString("networkId", playerNetwork, sizeof(playerNetwork));
 
         // Getting PTE earned by playtime
         int  timePlayed                  = currentTimestamp - playerObj.GetInt("teamTimestamp", 0);
@@ -158,10 +170,14 @@ public void OnRoundEnd(Event event, const char[] name, bool dontBroadcast)
 
         if (winningTeam == clientTeam)
         {
-            IncrementWallet(playerNetwork, winnerValue, index, "0.5 PTE", ", for Winning");
+            char outputText[32];
+            Format(outputText, sizeof(outputText), "%s PTE", winnerToShow);
+            IncrementWallet(playerNetwork, winnerValue, index, outputText, ", for Winning");
         }
         else {
-            IncrementWallet(playerNetwork, loserValue, index, "0.3 PTE", ", for Losing");
+            char outputText[32];
+            Format(outputText, sizeof(outputText), "%s PTE", loserToShow);
+            IncrementWallet(playerNetwork, loserValue, index, outputText, ", for Losing");
         }
 
         if (!StrEqual(timestampCurrentEarning, "0"))
@@ -172,7 +188,6 @@ public void OnRoundEnd(Event event, const char[] name, bool dontBroadcast)
         }
 
         playerObj.SetInt("teamTimestamp", currentTimestamp);
-        onlinePlayers.SetObject(key, playerObj);
 
         scoresToCheckIds.PushString(key);
 
@@ -200,9 +215,14 @@ public void OnRoundEnd(Event event, const char[] name, bool dontBroadcast)
             scoresToCheckIds.GetString(i, playerId, sizeof(playerId));
 
             JSON_Object playerObj = onlinePlayers.GetObject(playerId);
+            if (playerObj == INVALID_HANDLE)
+            {
+                PrintToServer("[PTE] [MVP] ERROR: %s have any invalid player object", playerId);
+                continue;
+            }
 
-            int         score     = playerObj.GetInt("score");
-            int         team      = playerObj.GetInt("team");
+            int score = playerObj.GetInt("score");
+            int team  = playerObj.GetInt("team");
             if (team == 2)
             {
                 if (redSoloScore < score)
@@ -264,9 +284,14 @@ public void OnRoundEnd(Event event, const char[] name, bool dontBroadcast)
             scoresToCheckIds.GetString(i, playerId, sizeof(playerId));
 
             JSON_Object playerObj = onlinePlayers.GetObject(playerId);
+            if (playerObj == INVALID_HANDLE)
+            {
+                PrintToServer("[PTE] [MVP_2] ERROR: %s have any invalid player object", playerId);
+                continue;
+            }
 
-            int         score     = playerObj.GetInt("score");
-            int         team      = playerObj.GetInt("team");
+            int score = playerObj.GetInt("score");
+            int team  = playerObj.GetInt("team");
             if (team == 2)
             {
                 if (redTwoScore < score)
@@ -328,9 +353,14 @@ public void OnRoundEnd(Event event, const char[] name, bool dontBroadcast)
             scoresToCheckIds.GetString(i, playerId, sizeof(playerId));
 
             JSON_Object playerObj = onlinePlayers.GetObject(playerId);
+            if (playerObj == INVALID_HANDLE)
+            {
+                PrintToServer("[PTE] [MVP_3] ERROR: %s have any invalid player object", playerId);
+                continue;
+            }
 
-            int         score     = playerObj.GetInt("score");
-            int         team      = playerObj.GetInt("team");
+            int score = playerObj.GetInt("score");
+            int team  = playerObj.GetInt("team");
             if (team == 2)
             {
                 if (redThreeScore < score)
@@ -381,7 +411,7 @@ public void OnRoundEnd(Event event, const char[] name, bool dontBroadcast)
 
 public void OnPlayerConnect(Event event, const char[] name, bool dontBroadcast)
 {
-    char playerName[64];
+    char playerName[32];
     char networkId[32];
     char address[32];
     int  index  = event.GetInt("index");
@@ -400,49 +430,12 @@ public void OnPlayerConnect(Event event, const char[] name, bool dontBroadcast)
         playerObj.SetString("address", address);
         playerObj.SetInt("userId", userId);
         playerObj.SetInt("index", index);
+        playerObj.SetInt("walletStatus", -1);
 
-        char userIdStr[8];
+        char userIdStr[32];
         IntToString(userId, userIdStr, sizeof(userIdStr));
 
         onlinePlayers.SetObject(userIdStr, playerObj);
-
-        char checkQuery[512];
-        Format(checkQuery, sizeof(checkQuery),
-               "SELECT COUNT(*) FROM tf2 WHERE uniqueid = '%s';",
-               networkId);
-
-        // Checking the player uniqueid existance
-        DBResultSet hQuery = SQL_Query(walletsDB, checkQuery);
-        if (hQuery == null)
-        {
-            char error[255];
-            SQL_GetError(walletsDB, error, sizeof(error));
-            PrintToServer("[PTE] Error checking if %s exists: %s", networkId, error);
-            return;
-        }
-        else {
-            while (SQL_FetchRow(hQuery))
-            {
-                int rows = SQL_FetchInt(hQuery, 0);
-                if (rows == 0)
-                {
-                    onlinePlayers.SetBool("walletSet", false);
-                    onlinePlayers.SetObject(userIdStr, playerObj);
-                    PrintToServer("[PTE] %s does not have a wallet...", playerName);
-                    return
-                }
-                else if (rows > 1) {
-                    onlinePlayers.SetBool("walletSet", false);
-                    PrintToServer("[PTE] ERROR: Address \"%s\" is on multiples rows, you setup the database wrongly, please check it. rows: %d", networkId, rows);
-                    return;
-                }
-                else {
-                    onlinePlayers.SetBool("walletSet", true);
-                    PrintToServer("[PTE] %s have a wallet", playerName);
-                    break;
-                }
-            }
-        }
 
         PrintToServer("[PTE] Player Connected: Name: %s | ID: %d | Index: %d | SteamID: %s | IP: %s | Bot: %d",
                       playerName, userId, index, networkId, address, isBot);
@@ -454,7 +447,6 @@ public void OnPlayerDisconnect(Event event, const char[] name, bool dontBroadcas
     char playerName[64];
     char networkId[32];
     char reason[128];
-    // int  index  = event.GetInt("index");
     int  userId = event.GetInt("userid");
     bool isBot  = event.GetBool("bot");
 
@@ -473,14 +465,19 @@ public void OnPlayerDisconnect(Event event, const char[] name, bool dontBroadcas
             onlinePlayers.GetKey(i, key, key_length);
 
             JSON_Object playerObj = onlinePlayers.GetObject(key);
+            if (playerObj == INVALID_HANDLE)
+            {
+                PrintToServer("[PTE] [OnPlayerDisconnect] ERROR: %s have any invalid player object", key);
+                continue;
+            }
 
-            char        playerObjNetwork[32];
+            char playerObjNetwork[32];
             playerObj.GetString("networkId", playerObjNetwork, 32);
             if (StrEqual(playerObjNetwork, networkId))
             {
-                char userIdStr[8];
-                IntToString(userId, userIdStr, sizeof(userIdStr));
-                onlinePlayers.Remove(userIdStr);
+                onlinePlayers.Remove(key);
+                playerObj.Cleanup();
+                playerObj = null;
                 json_cleanup_and_delete(playerObj);
             }
         }
@@ -499,7 +496,7 @@ public void OnPlayerChangeTeam(Event event, const char[] name, bool dontBroadcas
     int  team    = event.GetInt("team");
     int  oldTeam = event.GetInt("oldteam");
 
-    char userIdStr[8];
+    char userIdStr[32];
     IntToString(userId, userIdStr, sizeof(userIdStr));
 
     // Probably a bot
@@ -507,8 +504,13 @@ public void OnPlayerChangeTeam(Event event, const char[] name, bool dontBroadcas
         return;
 
     JSON_Object playerObj = onlinePlayers.GetObject(userIdStr);
+    if (playerObj == INVALID_HANDLE)
+    {
+        PrintToServer("[PTE] [OnPlayerChangeTeam] ERROR: %s have any invalid player object", userIdStr);
+        return;
+    }
 
-    char        playerName[32];
+    char playerName[32];
     playerObj.GetString("playerName", playerName, sizeof(playerName));
 
     PrintToServer("[PTE] %s changed their team: %d, previously: %d, timestamp: %d", playerName, team, oldTeam, playerObj.GetInt("teamTimestamp", 0));
@@ -516,7 +518,23 @@ public void OnPlayerChangeTeam(Event event, const char[] name, bool dontBroadcas
     playerObj.SetInt("team", team);
     playerObj.SetInt("teamTimestamp", currentTimestamp);
 
-    onlinePlayers.SetObject(userIdStr, playerObj);
+    if (playerObj.GetInt("walletStatus") == -1)
+    {
+        char networkId[32];
+        playerObj.GetString("networkId", networkId, sizeof(networkId));
+        if (WalletRegistered(networkId))
+        {
+            playerObj.SetInt("walletStatus", 1);
+        }
+        else {
+            playerObj.SetInt("walletStatus", 0);
+        }
+    }
+
+    if (playerObj.GetInt("walletStatus") == 0)
+    {
+        PrintToChat(GetClientOfUserId(userId), "[PTE] You do not have a wallet set yet, find out more on our discord: discord.gg/3SYP9TRVuX");
+    }
 }
 
 public void OnMapEnd()
@@ -554,8 +572,13 @@ public Action CommandRegisterWallet(int client, int args)
         IntToString(GetClientUserId(client), indexStr, sizeof(indexStr));
 
         JSON_Object playerObj = onlinePlayers.GetObject(indexStr);
+        if (playerObj == INVALID_HANDLE)
+        {
+            PrintToServer("[PTE] [CommandRegisterWallet] ERROR: %s have any invalid player object", indexStr);
+            return Plugin_Handled;
+        }
 
-        char        playerNetwork[32];
+        char playerNetwork[32];
         playerObj.GetString("networkId", playerNetwork, sizeof(playerNetwork));
 
         // Updating player in database
@@ -605,8 +628,7 @@ public Action CommandRegisterWallet(int client, int args)
                     {
                         PrintToChat(client, "Wallet set! you may now receive PTE while playing, have fun");
                         PrintToServer("[PTE] Updated %s wallet to: %s", playerNetwork, walletAddress);
-                        playerObj.SetBool("walletSet", true);
-                        onlinePlayers.SetObject(indexStr, playerObj);
+                        playerObj.SetInt("walletStatus", 1);
                     }
                 }
             }
@@ -648,7 +670,13 @@ public Action WarnPlayersWithoutWallet(Handle timer)
         onlinePlayers.GetKey(i, key, key_length);
 
         JSON_Object playerObj = onlinePlayers.GetObject(key);
-        if (!playerObj.GetBool("walletSet"))
+        if (playerObj == INVALID_HANDLE)
+        {
+            PrintToServer("[PTE] [WarnPlayersWithoutWallet] ERROR: %s have any invalid player object", key);
+            return Plugin_Continue;
+        }
+
+        if (playerObj.GetInt("walletStatus") == 0)
         {
             int index = GetClientOfUserId(playerObj.GetInt("userId"));
             PrintToChat(index, "[PTE] You do not have a wallet set yet, find out more on our discord: discord.gg/3SYP9TRVuX");
@@ -671,7 +699,7 @@ void IncrementWallet(
     }
 
     // Checking player existance in database
-    char checkQuery[512];
+    char checkQuery[128];
     Format(checkQuery, sizeof(checkQuery),
            "SELECT COUNT(*) FROM tf2 WHERE uniqueid = '%s';",
            playerNetwork);
@@ -691,7 +719,7 @@ void IncrementWallet(
             int index = SQL_FetchInt(hQuery, 0);
             if (index == 0)
             {
-                PrintToServer("[PTE] Address \"%s\" not found.", playerNetwork);
+                PrintToServer("[PTE] [IncrementWallet] Address \"%s\" not found.", playerNetwork);
                 return
             }
             else if (index > 1) {
@@ -699,7 +727,7 @@ void IncrementWallet(
                 return;
             }
             else {
-                PrintToServer("[PTE] Address \"%s\" was found in index. %d", playerNetwork, index);
+                PrintToServer("[PTE] [IncrementWallet] Address \"%s\" was found in index. %d", playerNetwork, index);
                 break;
             }
         }
@@ -747,6 +775,7 @@ bool JsonContains(JSON_Object obj, const char[] keyToCheck)
 
 void ClearTemporaryData()
 {
+    PrintToServer("[PTE] Clear Data was called, resetting player values...");
     currentTimestamp = 0;
 
     int length       = onlinePlayers.Length;
@@ -758,11 +787,13 @@ void ClearTemporaryData()
         onlinePlayers.GetKey(i, key, key_length);
 
         JSON_Object playerObj = onlinePlayers.GetObject(key);
-        if (playerObj == null) continue;
+        if (playerObj == INVALID_HANDLE)
+        {
+            PrintToServer("[PTE] [ClearTemporaryData] ERROR: %s have any invalid player object", key);
+            continue;
+        }
         playerObj.SetInt("teamTimestamp", currentTimestamp);
         playerObj.SetInt("score", 0);
-
-        onlinePlayers.SetObject(key, playerObj);
     }
 }
 
@@ -780,6 +811,41 @@ bool ValidAddress(const char[] address)
 
     int result = regex.Match(address);
     return result > 0;
+}
+
+bool WalletRegistered(const char[] networkId)
+{
+    char checkQuery[128];
+    Format(checkQuery, sizeof(checkQuery),
+           "SELECT COUNT(*) FROM tf2 WHERE uniqueid = '%s';",
+           networkId);
+
+    // Checking the player uniqueid existance
+    DBResultSet hQuery = SQL_Query(walletsDB, checkQuery);
+    if (hQuery == null)
+    {
+        char error[128];
+        SQL_GetError(walletsDB, error, sizeof(error));
+        PrintToServer("[PTE] Error checking if %s exists: %s", networkId, error);
+        return false;
+    }
+    else {
+        while (SQL_FetchRow(hQuery))
+        {
+            int rows = SQL_FetchInt(hQuery, 0);
+            if (rows == 0)
+            {
+                return false;
+            }
+            else if (rows > 1) {
+                PrintToServer("[PTE] ERROR: uniqueid \"%s\" is on multiples rows, you setup the database wrongly, please check it. rows: %d", networkId, rows);
+                return false;
+            }
+            else {
+                return true;
+            }
+        }
+    }
 }
 //
 //
